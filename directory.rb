@@ -1,26 +1,29 @@
+require 'csv'
+
 @months = ["january","february","march", "april","may", "june", "july", "august", "september", "october", "november", "december"]
 
+def input_cohort
+  cohort = STDIN.gets[0...-1]
+  if cohort.empty?
+    cohort = "november"
+  end 
+  until @months.include? cohort
+    puts "try again"
+    cohort = STDIN.gets[0...-1]
+  end 
+  return cohort
+end 
 
 def input_students
   puts "please enter the names of the students and then the cohort"
   puts "to finish just hit, return twice"
-
- 
- name = gets[0...-1]
- cohort = gets[0...-1]
-  
+  name = STDIN.gets[0...-1]
+  cohort = input_cohort
   while !name.empty? do
-    if cohort.empty?
-    cohort = "november"
-    end 
-    until @months.include? cohort
-    puts "try again"
-    cohort = gets[0...-1]
-    end 
-    @students << {name: name, cohort: cohort.to_sym, hobbies: :tennis, country_of_birth: :UK}
+    add_student(name, cohort)
     print_footer
-    name = gets[0...-1]
-    cohort = gets[0...-1]
+    name = STDIN.gets[0...-1]
+    cohort = input_cohort
   end 
 end 
 
@@ -61,9 +64,10 @@ def group_of_students
 end 
 def interactive_menu
   @students = []
+  try_load_students
   loop do 
     students_menu
-    selection = gets.chomp 
+    selection = STDIN.gets.chomp 
      process(selection)
     
   end 
@@ -73,7 +77,7 @@ def students_menu
   puts "1. input the students"
   puts "2. show the students"
   puts "3. save file"
-  puts "4. Load the list from students.csv"
+  puts "4. Load the list from a file"
   puts "5. exit"
 end 
 
@@ -84,11 +88,22 @@ def process(selection)
     when "2"
       if @students.length > 0
         print_students
+      else
+        puts "There are no students"
       end 
     when "3"
-     save_students
+     if @students.length > 0
+       puts "what file do you want to save ?"
+       file_name = STDIN.gets.chomp
+       save_students(file_name)
+     else
+       puts "There are no students"
+     end 
     when "4"
-      load_students
+      puts "which file do you want to load ?"
+      file_name = STDIN.gets.chomp
+      load_students(file_name)
+    
     when "5"
       exit
     else
@@ -103,24 +118,43 @@ end
   print_footer
  end 
 
-def save_students
-  file = File.open("students.csv", "w")
-  @students.each do |student|
-    student_data = [student[:name], student[:cohort]]
-    csv_line = student_data.join(",")
-    file.puts csv_line
-  end 
-  file.close
+def save_students(filename = "students.csv")
+  CSV.open(filename, "w") do |file|
+    @students.each do |student|
+      student_data = [student[:name], student[:cohort]]
+      file << student_data
+    end 
+  end
+  puts "saved students"
 end 
 
-def load_students
-  file = File.open("students.csv", "r")
-  file.readlines.each do |line|
-  name, cohort = line.chomp.split(',')
-    @students << {name: name, cohort: cohort.to_sym}
+def load_students(filename = "students.csv")
+  @students = []
+  CSV.foreach(filename) do |row|
+    name, cohort = row
+    add_student(name, cohort)
   end
-  file.close
+  puts "loaded students"
+end
+
+def try_load_students
+  filename = ARGV.first 
+  if filename.nil?
+    filename = "students.csv"
+  end 
+  if File.exists?(filename) 
+    load_students(filename)
+     puts "Loaded #{@students.count} from #{filename}"
+  else 
+    puts "Sorry, #{filename} doesn't exist."
+    exit 
+  end
 end
 
 
+def add_student(name, cohort)
+@students << {name: name, cohort: cohort.to_sym}
+end 
+
 interactive_menu
+
